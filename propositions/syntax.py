@@ -295,6 +295,12 @@ class Formula:
             The polish notation representation of the current formula.
         """
         # Optional Task 1.7
+        if is_variable(self.root) or is_constant(self.root):
+            return self.root
+        elif is_unary(self.root):
+            return self.root + self.first.polish()
+        else:  # binary operator
+            return self.root + self.first.polish() + self.second.polish()
 
     @staticmethod
     def parse_polish(string: str) -> Formula:
@@ -307,6 +313,54 @@ class Formula:
             A formula whose polish notation representation is the given string.
         """
         # Optional Task 1.8
+        def parse_polish_rec(s: str, start: int) -> Tuple[Formula, int]:
+            """Recursively parse polish notation.
+            
+            Returns:
+                Tuple of (parsed formula, next position in string)
+            """
+            if start >= len(s):
+                raise ValueError("Unexpected end of string")
+            
+            # Try to parse variable
+            if is_variable(s[start]):
+                i = start + 1
+                while i < len(s) and s[i].isdecimal():
+                    i += 1
+                var_name = s[start:i]
+                if is_variable(var_name):
+                    return Formula(var_name), i
+            
+            # Try to parse constant
+            if s[start] == 'T':
+                return Formula('T'), start + 1
+            if s[start] == 'F':
+                return Formula('F'), start + 1
+            
+            # Try to parse unary operator
+            if s[start] == '~':
+                formula, next_pos = parse_polish_rec(s, start + 1)
+                return Formula('~', formula), next_pos
+            
+            # Try to parse binary operator
+            if s[start] in ['&', '|']:
+                op = s[start]
+                first, pos1 = parse_polish_rec(s, start + 1)
+                second, pos2 = parse_polish_rec(s, pos1)
+                return Formula(op, first, second), pos2
+            
+            # Try to parse -> operator (two characters)
+            if start + 1 < len(s) and s[start:start+2] == '->':
+                first, pos1 = parse_polish_rec(s, start + 2)
+                second, pos2 = parse_polish_rec(s, pos1)
+                return Formula('->', first, second), pos2
+            
+            raise ValueError(f"Unexpected character at position {start}: {s[start]}")
+        
+        formula, pos = parse_polish_rec(string, 0)
+        if pos != len(string):
+            raise ValueError(f"Unexpected characters at end: {string[pos:]}")
+        return formula
 
     def substitute_variables(self, substitution_map: Mapping[str, Formula]) -> \
             Formula:
